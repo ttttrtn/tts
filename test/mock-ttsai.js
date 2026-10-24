@@ -9,7 +9,7 @@ const json = (obj, status = 200, headers = {}) =>
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url);
-  if (url.hostname !== 'api.tts.ai') throw new Error(`mock blocked real network call to ${url.hostname}`);
+  if (url.hostname !== 'api.tts.ai' && url.hostname !== 'cdn.tts.ai') throw new Error(`mock blocked real network call to ${url.hostname}`);
   const auth = (init.headers && (init.headers.Authorization || init.headers.authorization)) || '';
 
   if (url.pathname.endsWith('/voices/')) {
@@ -37,10 +37,13 @@ globalThis.fetch = async (input, init = {}) => {
     if (job.text.includes('SLOWJOB')) return json({ status: 'processing' });
     if (job.polls < 2) return json({ status: 'processing' });
     if (job.text.includes('FAILJOB')) return json({ status: 'failed', error: 'model crashed' });
+    if (job.text.includes('CDNURL')) return json({ status: 'completed', result_url: 'https://cdn.tts.ai/dl/' + url.searchParams.get('uuid') + '/output.mp3' });
+    if (job.text.includes('SUFFIXURL')) return json({ status: 'completed', result_url: 'https://eviltts.ai/a.mp3' });
+    if (job.text.includes('HTTPURL')) return json({ status: 'completed', result_url: 'http://api.tts.ai/a.mp3' });
     if (job.text.includes('BADURL')) return json({ status: 'completed', result_url: 'https://evil.example.com/a.mp3' });
     return json({ status: 'completed', result_url: `https://api.tts.ai/static/downloads/${url.searchParams.get('uuid')}/output.mp3` });
   }
-  if (url.pathname.startsWith('/static/downloads/')) {
+  if (url.pathname.startsWith('/static/downloads/') || url.pathname.startsWith('/dl/')) {
     return new Response(Buffer.concat([Buffer.from('ID3'), Buffer.alloc(200, 1)]), { status: 200, headers: { 'content-type': 'audio/mpeg' } });
   }
   return json({ error: 'mock: unknown route ' + url.pathname }, 404);

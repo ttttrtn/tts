@@ -45,6 +45,7 @@ Official API docs: https://tts.ai/api/
 | `TTS_API_KEY` | No | Your TTS.ai key (from tts.ai > Account). Without it the app runs anonymously on free models. |
 | `ENDPOINT_TOKEN` | Required for the overlay, recommended otherwise | Any long random string. `GET /api/tts`, `/api/announce` and the overlay then require `token=...`, so strangers can't spend your characters or make your stream speak. |
 | `MAX_TEXT_LENGTH` | No | Default `500` (the anonymous limit). Free accounts may allow up to 5,000; max accepted here is 5,000. |
+| `EXTRA_AUDIO_HOSTS` | No | Comma-separated extra hostnames the audio may be downloaded from, if TTS.ai uses one outside `tts.ai` / `*.tts.ai`. The error message names the blocked host. |
 | `EXTRA_MODELS` | No | Comma-separated extra model IDs, e.g. a premium model your plan allows. |
 | `DEFAULT_MODEL` / `DEFAULT_VOICE` | No | Defaults for the GET endpoint. Defaults: `kokoro` / `af_bella`. |
 | `RATE_LIMIT_PER_MIN` | No | Per-IP limit on this app's generation endpoints. Default `10`. |
@@ -79,7 +80,7 @@ Content-Type: application/json
 {"text":"Welcome to MalikGPT","model":"kokoro","voice":"af_bella","format":"mp3","speed":1}
 ```
 then `GET https://api.tts.ai/v1/speech/results/?uuid=<uuid>` every 1.5 s until `completed`, then it downloads `result_url`
-(only if it is HTTPS on `api.tts.ai` or `tts.ai`).
+(only if it is HTTPS on `tts.ai` or a `*.tts.ai` subdomain, or a host you add in `EXTRA_AUDIO_HOSTS`).
 
 ## Play it on a web page (overlay) - the Synchra setup
 

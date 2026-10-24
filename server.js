@@ -18,7 +18,10 @@ const PORT = int(process.env.PORT, 3000, 1, 65535);
 const API_KEY = (process.env.TTS_API_KEY || '').trim();          // optional
 const ENDPOINT_TOKEN = (process.env.ENDPOINT_TOKEN || '').trim(); // optional, protects GET /api/tts
 const API_BASE = 'https://api.tts.ai/v1/';                       // fixed on purpose
-const ALLOWED_AUDIO_HOSTS = new Set(['api.tts.ai', 'tts.ai']);    // result_url must be HTTPS on one of these
+// result_url must be HTTPS on tts.ai or any *.tts.ai subdomain (e.g. a download/CDN host), or on a host you list in EXTRA_AUDIO_HOSTS.
+const EXTRA_AUDIO_HOSTS = (process.env.EXTRA_AUDIO_HOSTS || '').split(',')
+  .map((h) => h.trim().toLowerCase()).filter((h) => /^[a-z0-9.-]{3,100}$/.test(h));
+const isAllowedAudioHost = (h) => h === 'tts.ai' || h.endsWith('.tts.ai') || EXTRA_AUDIO_HOSTS.includes(h);
 const FREE_MODELS = ['piper', 'vits', 'melotts', 'kokoro'];       // free models listed in the TTS.ai docs
 const EXTRA_MODELS = (process.env.EXTRA_MODELS || '').split(',')
   .map((s) => s.trim().toLowerCase()).filter((s) => /^[a-z0-9._-]{1,40}$/.test(s));
@@ -149,8 +152,12 @@ async function parseParams(input) {
 function assertAllowedAudioUrl(raw) {
   let u;
   try { u = new URL(raw); } catch { throw new ApiError(502, 'blocked_audio_url', 'TTS.ai returned an invalid audio URL.'); }
-  const bad = u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443') || !ALLOWED_AUDIO_HOSTS.has(u.hostname);
-  if (bad) throw new ApiError(502, 'blocked_audio_url', 'Audio URL is not on an approved TTS.ai host, so it was not fetched.');
+  let why = '';
+  if (u.protocol !== 'https:') why = `it is not HTTPS (${u.protocol.replace(':', '')})`;
+  else if (u.username || u.password) why = 'it contains a login';
+  else if (u.port && u.port !== '443') why = `it uses port ${u.port}`;
+  else if (!isAllowedAudioHost(u.hostname)) why = `host "${u.hostname.slice(0, 80)}" is not approved`;
+  if (why) throw new ApiError(502, 'blocked_audio_url', `Audio URL was not fetched because ${why}. If this is a real TTS.ai host, add it to EXTRA_AUDIO_HOSTS.`);
   return u;
 }
 

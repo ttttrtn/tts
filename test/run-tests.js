@@ -88,6 +88,13 @@ function check(name, ok, extra = '') { (ok ? pass++ : fail++); console.log(`${ok
     r = await get(A, `text=BADURL&${T}`);
     check('non-TTS.ai result_url is refused (not fetched)', r.status === 502 && (await err(r)).code === 'blocked_audio_url');
 
+    r = await get(A, `text=CDNURL&${T}`); buf = Buffer.from(await r.arrayBuffer());
+    check('audio on a *.tts.ai subdomain is allowed', r.status === 200 && buf.slice(0, 3).toString() === 'ID3', String(r.status));
+    r = await get(A, `text=SUFFIXURL&${T}`); j = await r.json();
+    check('look-alike host (eviltts.ai) is blocked and named in the error', r.status === 502 && j.error.code === 'blocked_audio_url' && j.error.message.includes('eviltts.ai'), JSON.stringify(j));
+    r = await get(A, `text=HTTPURL&${T}`); j = await r.json();
+    check('plain http audio URL is blocked', r.status === 502 && j.error.message.includes('not HTTPS'), JSON.stringify(j));
+
     r = await get(B, 'text=Anonymous%20hello'); buf = Buffer.from(await r.arrayBuffer());
     check('anonymous mode works (no Authorization header sent)', r.status === 200 && buf.slice(0, 3).toString() === 'ID3', String(r.status));
 
