@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: stream-tts-player
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: TTS_API_KEY      # optional - paste the value in the Render dashboard
+        sync: false
+      - key: ENDPOINT_TOKEN   # strongly recommended - any long random string
+        sync: false

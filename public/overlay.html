@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TTS Overlay</title>
+<style>
+  html, body { margin: 0; background: transparent; color: #e9ecfb; font: 14px system-ui, sans-serif; }
+  #status { position: fixed; left: 8px; bottom: 8px; display: none; }
+  #unlock { display: none; margin: 8px; padding: 10px 16px; border: 0; border-radius: 10px; background: #8b5cf6; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<!-- Use as an OBS Browser Source: /overlay.html?token=YOUR_TOKEN   (add &debug=1 to see status text) -->
+<button id="unlock" type="button">Click to enable sound</button>
+<div id="status" role="status"></div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token') || '';
+  const statusEl = document.getElementById('status');
+  const unlockBtn = document.getElementById('unlock');
+  if (params.has('debug')) statusEl.style.display = 'block';
+  const setStatus = (t) => { statusEl.textContent = t; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function fetchAudio(item) {
+    const p = new URLSearchParams({ text: item.text, model: item.model, voice: item.voice, speed: item.speed, token });
+    const r = await fetch('/api/tts?' + p, { cache: 'no-store' });
+    if (!r.ok) {
+      let m = 'HTTP ' + r.status;
+      try { m = (await r.json()).error.message; } catch (e) {}
+      throw new Error(m);
+    }
+    return URL.createObjectURL(await r.blob());
+  }
+
+  async function speak(item) {
+    let url;
+    for (let attempt = 0; ; attempt++) {
+      try { url = await fetchAudio(item); break; }
+      catch (e) { if (attempt >= 2) throw e; setStatus('Retrying: ' + e.message); await sleep(3000); }
+    }
+    const audio = new Audio(url);
+    const done = new Promise((resolve) => { audio.onended = resolve; audio.onerror = resolve; });
+    try {
+      await audio.play();
+    } catch (e) {
+      if (e.name !== 'NotAllowedError') throw e;
+      // Normal browsers block autoplay until the page is clicked. OBS Browser Source usually doesn't.
+      unlockBtn.style.display = 'inline-block';
+      await new Promise((r) => unlockBtn.addEventListener('click', r, { once: true }));
+      unlockBtn.style.display = 'none';
+      await audio.play();
+    }
+    setStatus('Speaking: ' + item.text);
+    await done;
+    URL.revokeObjectURL(url);
+    setStatus('Waiting for announcements…');
+  }
+
+  async function loop() {
+    setStatus('Waiting for announcements…');
+    for (;;) {
+      try {
+        const r = await fetch('/api/overlay/next?token=' + encodeURIComponent(token), { cache: 'no-store' });
+        if (r.status === 204) continue;                       // nothing yet; ask again
+        if (r.status === 401 || r.status === 503) {
+          setStatus(r.status === 401 ? 'Wrong or missing token in the page URL.' : 'Server has no ENDPOINT_TOKEN set.');
+          await sleep(10000); continue;
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        await speak((await r.json()).item);
+      } catch (e) {
+        setStatus('Error: ' + e.message);
+        await sleep(3000);
+      }
+    }
+  }
+  loop();
+</script>
+</body>
+</html>

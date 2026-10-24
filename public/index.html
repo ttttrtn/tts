@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stream TTS Player</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>Stream TTS Player</h1>
+      <p class="sub">Type an announcement, generate the voice, play it or download the MP3.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="t-label">
+      <label id="t-label" for="text">Announcement</label>
+      <textarea id="text" rows="5" placeholder="Welcome to the stream!"></textarea>
+      <div class="row between">
+        <button type="button" id="sample" class="link">Use sample announcement</button>
+        <span id="counter" class="counter" aria-live="polite">0 / 500</span>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label for="model">Model</label>
+          <select id="model"></select>
+        </div>
+        <div>
+          <label for="voice">Voice</label>
+          <select id="voice"><option>Loading voices…</option></select>
+        </div>
+        <div class="full">
+          <label for="speed">Speed <output id="speedOut">1.0×</output></label>
+          <input id="speed" type="range" min="0.5" max="2" step="0.1" value="1">
+        </div>
+      </div>
+
+      <button type="button" id="generate" class="primary">Generate speech</button>
+      <div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <section class="panel player" id="player" hidden aria-label="Audio player">
+      <audio id="audio" preload="auto"></audio>
+      <div class="row">
+        <button type="button" id="play" class="round" aria-label="Play">▶</button>
+        <button type="button" id="pause" class="round" aria-label="Pause">❚❚</button>
+        <input id="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Seek">
+      </div>
+      <div class="row between">
+        <label class="vol">Volume
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="1">
+        </label>
+        <a id="download" class="primary-ghost" download="announcement.mp3">Download MP3</a>
+      </div>
+    </section>
+
+    <p class="foot">Anonymous TTS.ai use is limited (500 characters per request, 5,000 per day per IP). See the README for details.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
